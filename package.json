@@ -1,0 +1,26 @@
+{
+  "name": "clockwork-tools",
+  "version": "1.0.0",
+  "description": "CLI tools for developing Clockwork games",
+  "main": "index.js",
+  "bin" : { "clockwork" : "./index.js" },
+  "files":["template"],
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/arcadiogarcia/ClockworkTools.git"
+  },
+  "keywords": [
+    "clockwork",
+    "gamedev"
+  ],
+  "author": "Arcadio Garcia",
+  "license": "MIT",
+  "preferGlobal": true,
+  "bugs": {
+    "url": "https://github.com/arcadiogarcia/ClockworkTools/issues"
+  },
+  "homepage": "https://github.com/arcadiogarcia/ClockworkTools#readme"
+}
