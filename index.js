@@ -15,8 +15,6 @@ if (userArguments.length < 1) {
         case "build":
             buildProject();
             break;
-        case "deploy":
-            break;
         default:
             console.log("The specified action was not recognized");
             break;
@@ -89,11 +87,11 @@ function generatePackage(manifest) {
             child.stdin.write('Copy-Item "' + workingPath + '/manifest.json" "' + workingPath + '/HypergapPackageTemp" \n');
             child.stdin.write('Copy-Item "' + workingPath + '/' + manifest.scope + '" "' + workingPath + '/HypergapPackageTemp" -Recurse\n');
             child.stdin.write('Add-Type -A System.IO.Compression.FileSystem\n');
-            child.stdin.write('If (Test-Path "' + workingPath + '\\' + manifest.name + '.hgp"){Remove-Item "' + workingPath + '\\' + manifest.name + '.hgp" }\n');
-            child.stdin.write("[IO.Compression.ZipFile]::CreateFromDirectory('" + workingPath + "/HypergapPackageTemp', '" + workingPath + "/" + manifest.name + ".hgp')\n");
+            child.stdin.write('If (Test-Path "' + workingPath + '\\' + manifest.name + '.hgp"){Remove-Item "' + workingPath + '\\' + manifest.name + '.cw" }\n');
+            child.stdin.write("[IO.Compression.ZipFile]::CreateFromDirectory('" + workingPath + "/HypergapPackageTemp', '" + workingPath + "/" + manifest.name + ".cw')\n");
             child.stdin.write('Remove-Item "' + workingPath + '\\HypergapPackageTemp"-recurse\n');
             child.stdin.end();
-            return workingPath + "/" + manifest.name + ".hgp";
+            return workingPath + "/" + manifest.name + ".cw";
         default:
             console.log("This OS is not supported yet");
             return false;
