@@ -3,6 +3,9 @@ var fs = require('fs');
 var path = require('path');
 var os = require('os');
 var spawn = require('child_process').spawn;
+var parseString = require('xml2js').parseString;
+var ncp = require('ncp').ncp;
+var archiver = require('archiver');
 
 var userArguments = process.argv.slice(2);
 if (userArguments.length < 1) {
@@ -62,8 +65,7 @@ function createProject(projectName) {
 function buildProject() {
     var manifest = readManifest();
     if (manifest != null) {
-        var path = generatePackage(manifest);
-        console.log("The package has been successfully generated, you can find it at "+path);
+        var path = generatePackage(manifest).then(x => console.log("The package has been successfully generated, you can find it at " + x));
     } else {
         console.log("The current directory does not contain a Clockwork project");
     }
@@ -71,39 +73,149 @@ function buildProject() {
 
 //Creates a Clockwork package using the given manifest
 function generatePackage(manifest) {
-    switch (os.type()) {
-        case "Windows_NT":
-            var results = [];
-            var spawn = require("child_process").spawn;
-            var child = spawn("powershell.exe", ["-Command", "-"]);
-            child.stdout.on("data", function (data) {
-                // console.log(data.toString());
+    var workingPath = path.resolve("./");
+    try {
+        fs.mkdirSync(workingPath + '/ClockworkPackageTemp');
+    } catch (e) { }
+    copyFileSync(workingPath + '/manifest.json', workingPath + '/ClockworkPackageTemp/manifest.json');
+    return new Promise((res, rej) => {
+        ncp(workingPath + '/' + manifest.scope, workingPath + '/ClockworkPackageTemp/' + manifest.scope, function (err) {
+            if (err) {
+                console.error(err);
+                rej();
+            } else {
+                res()
+            }
+        })
+    }).then(function () {
+        return preprocessPackage(workingPath + "\\ClockworkPackageTemp");
+    }).then(x => {
+        return new Promise((res, rej) => {
+            try {
+                fs.unlinkSync(workingPath + "/" + manifest.name + '.cw');
+            } catch (e) { }
+            var output = fs.createWriteStream(manifest.name + '.cw');
+            var archive = archiver('zip');
+            output.on('close', function () {
+                deleteFolderRecursive(workingPath + "/ClockworkPackageTemp/");
+                res();
             });
-            child.stderr.on("data", function (data) {
-                console.log(data.toString());
+            archive.on('error', function (err) {
+                throw err;
             });
-            var workingPath = path.resolve("./");
-            child.stdin.write('mkdir "' + workingPath + '\\HypergapPackageTemp" \n');
-            child.stdin.write('Copy-Item "' + workingPath + '/manifest.json" "' + workingPath + '/HypergapPackageTemp" \n');
-            child.stdin.write('Copy-Item "' + workingPath + '/' + manifest.scope + '" "' + workingPath + '/HypergapPackageTemp" -Recurse\n');
-            child.stdin.write('Add-Type -A System.IO.Compression.FileSystem\n');
-            child.stdin.write('If (Test-Path "' + workingPath + '\\' + manifest.name + '.hgp"){Remove-Item "' + workingPath + '\\' + manifest.name + '.cw" }\n');
-            child.stdin.write("[IO.Compression.ZipFile]::CreateFromDirectory('" + workingPath + "/HypergapPackageTemp', '" + workingPath + "/" + manifest.name + ".cw')\n");
-            child.stdin.write('Remove-Item "' + workingPath + '\\HypergapPackageTemp"-recurse\n');
-            child.stdin.end();
-            return workingPath + "/" + manifest.name + ".cw";
-        default:
-            console.log("This OS is not supported yet");
-            return false;
-    }
+            archive.pipe(output);
+            archive.glob("**",{
+                cwd:workingPath + "/ClockworkPackageTemp/"
+            })
+            // archive.bulk([
+            //     { expand: true, cwd: workingPath + "/ClockworkPackageTemp/", src: ['**'], dest: '' }
+            // ]);
+            archive.finalize();
+        });
+    }).then(x => workingPath + "/" + manifest.name + ".cw");
 }
 
 //Reads the manifest in the working directory
-function readManifest() {
+function readManifest(projectPath) {
     try {
-        var manifest = require(path.resolve("./")+"/manifest.json");
+        var manifest = require((projectPath || path.resolve("./")) + "/manifest.json");
         return manifest;
     } catch (e) {
         return null;
     }
 }
+
+//Run all the preprocessors on the package
+function preprocessPackage(path) {
+    var manifest = readManifest();
+    //Convert xml spritesheets to json
+    return new Promise((resolvef, rejectf) => {
+        Promise.all(manifest.levels.map(function (oldName, i) {
+            if (oldName.indexOf(".xml") != -1) {
+                var newName = oldName.split(".xml").join(".json");
+                manifest.levels[i] = newName;
+                return new Promise((resolve, reject) => {
+                    fs.readFile(path + "/" + manifest.scope + "/" + oldName, function (err, data) {
+                        if (err) {
+                            return console.error(err);
+                        } else {
+                            parseString(data, function (err, result) {
+                                if (err) {
+                                    return console.error(err);
+                                } else {
+                                    fs.writeFile(path + "/" + manifest.scope + "/" + newName, JSON.stringify(XMLlevelsToJson(result)), function (err) {
+                                        if (err) {
+                                            return console.error(err);
+                                        }
+                                        resolve();
+                                    });
+                                }
+                            });
+                        }
+                    });
+                });
+            } else {
+                return new Promise((resolve, reject) => { resolve() });
+            }
+        })).then(x => {
+            fs.writeFile(path + "/manifest.json", JSON.stringify(manifest), function (err) {
+                if (err) {
+                    return console.error(err);
+                }
+                resolvef();
+            });
+        });
+    });
+}
+
+function XMLlevelsToJson(result) {
+    return result.levels.level.map(XMLlevelToJson);
+}
+
+function XMLlevelToJson(thislevel) {
+    var level = {};
+    level.id = thislevel.$.id;
+    level.objects = thislevel.object.map(function (thisobject) {
+        var object = {};
+        //Set name
+        object.name = thisobject.$.name
+        //Set type
+        if (thisobject.type && thisobject.type.length > 0) {
+            //Composition
+            object.type = thisobject.type.map(function (x) { return x.$.id; });
+        } else {
+            //Inheritance
+            object.type = thisobject.$.type;
+        }
+        //Set spritesheet
+        object.sprite = thisobject.$.spritesheet ? thisobject.$.spritesheet : null;
+        //Set whether the object is static
+        object.isstatic = thisobject.$.static ? thisobject.$.static : null;
+        //Set x,y,z
+        object.x = +thisobject.$.x;
+        object.y = +thisobject.$.y;
+        object.z = thisobject.$.z ? +thisobject.$.z : null;
+        //Set vars
+        object.vars = thisobject.$.vars ? JSON.parse(thisobject.$.vars) : {};
+        return object;
+    });
+    return level;
+}
+
+function copyFileSync(srcFile, destFile) {
+    var content = fs.readFileSync(srcFile);
+    fs.writeFileSync(destFile, content);
+}
+function deleteFolderRecursive(path) {
+    if (fs.existsSync(path)) {
+        fs.readdirSync(path).forEach(function (file, index) {
+            var curPath = path + "/" + file;
+            if (fs.lstatSync(curPath).isDirectory()) { // recurse
+                deleteFolderRecursive(curPath);
+            } else { // delete file
+                fs.unlinkSync(curPath);
+            }
+        });
+        fs.rmdirSync(path);
+    }
+};
