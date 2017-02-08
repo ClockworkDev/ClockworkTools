@@ -130,7 +130,7 @@ function preprocessPackage(path) {
     var manifest = readManifest();
     //Convert xml spritesheets to json
     return new Promise((resolvef, rejectf) => {
-        Promise.all(manifest.levels.map(function (oldName, i) {
+        var levels =manifest.levels.map(function (oldName, i) {
             if (oldName.indexOf(".xml") != -1) {
                 var newName = oldName.split(".xml").join(".json");
                 manifest.levels[i] = newName;
@@ -157,7 +157,36 @@ function preprocessPackage(path) {
             } else {
                 return new Promise((resolve, reject) => { resolve() });
             }
-        })).then(x => {
+        });
+        var spritesheets =manifest.spritesheets.map(function (oldName, i) {
+            if (oldName.indexOf(".xml") != -1) {
+                var newName = oldName.split(".xml").join(".json");
+                manifest.spritesheets[i] = newName;
+                return new Promise((resolve, reject) => {
+                    fs.readFile(path + "/" + manifest.scope + "/" + oldName, function (err, data) {
+                        if (err) {
+                            return console.error(err);
+                        } else {
+                            parseString(data, function (err, result) {
+                                if (err) {
+                                    return console.error(err);
+                                } else {
+                                    fs.writeFile(path + "/" + manifest.scope + "/" + newName, JSON.stringify(XMLspritesheetsToJson(result)), function (err) {
+                                        if (err) {
+                                            return console.error(err);
+                                        }
+                                        resolve();
+                                    });
+                                }
+                            });
+                        }
+                    });
+                });
+            } else {
+                return new Promise((resolve, reject) => { resolve() });
+            }
+        });
+        Promise.all(levels.concat(spritesheets)).then(x => {
             fs.writeFile(path + "/manifest.json", JSON.stringify(manifest), function (err) {
                 if (err) {
                     return console.error(err);
@@ -167,6 +196,8 @@ function preprocessPackage(path) {
         });
     });
 }
+
+//Levels logic
 
 function XMLlevelsToJson(result) {
     return result.levels.level.map(XMLlevelToJson);
@@ -201,6 +232,83 @@ function XMLlevelToJson(thislevel) {
     });
     return level;
 }
+
+//Spritesheets logic
+
+function XMLspritesheetsToJson(result) {
+    return result.spritesheets.spritesheet.map(XMLspritesheetToJson);
+}
+
+function Spritesheet() {
+    this.name = "";
+    this.img;
+    this.states = {}
+    this.layers = {}
+    this.frames = {};
+}
+
+function State() {
+    this.layers = [];
+}
+
+//Holds a layer: Body, arms...
+function Layer() {
+    this.frames = [];
+    this.x;
+    this.y;
+}
+
+//Holds a single frame
+function Frame(x, y, w, h, t) {
+    this.x = x;
+    this.y = y;
+    this.w = w;
+    this.h = h;
+    this.t = t;
+}
+
+function XMLspritesheetToJson(thisspritesheet) {
+    var newspritesheet = new Spritesheet();
+    newspritesheet.name = thisspritesheet.$.name;
+    if (thisspritesheet.$.src != undefined) {
+        newspritesheet.src = thisspritesheet.$.src;
+    }
+    thisspritesheet.frames[0].frame.forEach(function (frame) {
+        var newframe = new Frame();
+        if (frame.$.code == undefined) {
+            if (frame.$.fullTexture) {
+                newframe.fullTexture = true;
+            } else {
+                newframe.x = +frame.$.x;
+                newframe.y = +frame.$.y;
+                newframe.w = +frame.$.w
+                newframe.h = +frame.$.h;
+            }
+        } else {
+            newframe.code = frame.$.code;
+        }
+        newframe.t = +frame.$.t;
+        newspritesheet.frames[frame.$.name]= newframe;
+    });
+    thisspritesheet.layers[0].layer.forEach(function (layer) {
+        var newlayer = new Layer();
+        newlayer.x =  layer.$.x;
+        newlayer.y =  layer.$.y;
+        newlayer.frames= layer.frame.map(function(f){return f.$.name;});
+        newspritesheet.layers[layer.$.name]= newlayer;
+    });
+    thisspritesheet.states[0].state.forEach(function (state) {
+        var newstate = new State();
+        newstate.layers = state.layer.map(function(l){return l.$.name;});
+        if(state.$.flip){
+            newstate.flip = state.$.flip;
+        }
+        newspritesheet.states[state.$.name]= newstate;
+    });
+    return newspritesheet;
+}
+
+//File system helpers
 
 function copyFileSync(srcFile, destFile) {
     var content = fs.readFileSync(srcFile);
