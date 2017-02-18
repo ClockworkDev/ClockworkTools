@@ -22,6 +22,13 @@ if (userArguments.length < 1) {
         case "list":
             listPackages(userArguments[1]);
             break;
+        case "register":
+            register(userArguments[1], userArguments[2],userArguments[3]);
+            break;
+        case "help":
+        case "?":
+            help();
+            break;
         default:
             console.log("The specified action was not recognized");
             break;
@@ -338,12 +345,12 @@ function deleteFolderRecursive(path) {
 
 function listPackages(packageId) {
     if (packageId) {
-        request('http://cwpm.azurewebsites.net/api/packages/'+packageId, function (error, response, body) {
+        request('http://cwpm.azurewebsites.net/api/packages/' + packageId, function (error, response, body) {
             if (!error && response.statusCode == 200) {
-                console.log("Versions of "+packageId+":");
+                console.log("Versions of " + packageId + ":");
                 var packages = JSON.parse(body);
                 packages.forEach(function (p) {
-                    console.log(" "+p.version + " published at " + p.date);
+                    console.log(" " + p.version + " published at " + p.date);
                 });
             }
         });
@@ -353,9 +360,34 @@ function listPackages(packageId) {
                 console.log("Packages published:");
                 var packages = JSON.parse(body);
                 packages.forEach(function (p) {
-                    console.log(" "+p.id + " by " + p.by);
+                    console.log(" " + p.id + " by " + p.by);
                 });
             }
         });
     }
+}
+
+function register(username,email, password) {
+    request.post({ url: 'http://cwpm.azurewebsites.net/api/developers', form: { name:username, email:email, password:password } }, function (err, httpResponse, body) {
+        if(JSON.parse(body).res=="OK"){
+            console.log("User registered successfully");
+        }else{
+            console.log("Error registering your account. Maybe that username is already taken?");
+        }
+    })
+}
+
+
+function help(){
+    console.log("The following commands are allowed:");
+    console.log("\n > clockwork init <projectName>");
+    console.log("   Creates an empty Clockwork project in the working directory");
+    console.log("\n > clockwork build");
+    console.log("   Builds the Clockwork project in the working directory, generating a .cw file");
+    console.log("\n > clockwork list");
+    console.log("   Lists the Clockwork modules available in the online repository");
+    console.log("\n > clockwork list <moduleName>");
+    console.log("   Lists the versions of that module available in the online repository");
+    console.log("\n > clockwork register <username> <email> <password>");
+    console.log("   Registers a developer account, allowing you to publish Clockwork modules");
 }
