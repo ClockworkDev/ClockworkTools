@@ -6,6 +6,7 @@ var spawn = require('child_process').spawn;
 var parseString = require('xml2js').parseString;
 var ncp = require('ncp').ncp;
 var archiver = require('archiver');
+var request = require('request');
 
 var userArguments = process.argv.slice(2);
 if (userArguments.length < 1) {
@@ -17,6 +18,9 @@ if (userArguments.length < 1) {
             break;
         case "build":
             buildProject();
+            break;
+        case "list":
+            listPackages(userArguments[1]);
             break;
         default:
             console.log("The specified action was not recognized");
@@ -104,8 +108,8 @@ function generatePackage(manifest) {
                 throw err;
             });
             archive.pipe(output);
-            archive.glob("**",{
-                cwd:workingPath + "/ClockworkPackageTemp/"
+            archive.glob("**", {
+                cwd: workingPath + "/ClockworkPackageTemp/"
             })
             // archive.bulk([
             //     { expand: true, cwd: workingPath + "/ClockworkPackageTemp/", src: ['**'], dest: '' }
@@ -130,7 +134,7 @@ function preprocessPackage(path) {
     var manifest = readManifest();
     //Convert xml spritesheets to json
     return new Promise((resolvef, rejectf) => {
-        var levels =manifest.levels.map(function (oldName, i) {
+        var levels = manifest.levels.map(function (oldName, i) {
             if (oldName.indexOf(".xml") != -1) {
                 var newName = oldName.split(".xml").join(".json");
                 manifest.levels[i] = newName;
@@ -158,7 +162,7 @@ function preprocessPackage(path) {
                 return new Promise((resolve, reject) => { resolve() });
             }
         });
-        var spritesheets =manifest.spritesheets.map(function (oldName, i) {
+        var spritesheets = manifest.spritesheets.map(function (oldName, i) {
             if (oldName.indexOf(".xml") != -1) {
                 var newName = oldName.split(".xml").join(".json");
                 manifest.spritesheets[i] = newName;
@@ -288,22 +292,22 @@ function XMLspritesheetToJson(thisspritesheet) {
             newframe.code = frame.$.code;
         }
         newframe.t = +frame.$.t;
-        newspritesheet.frames[frame.$.name]= newframe;
+        newspritesheet.frames[frame.$.name] = newframe;
     });
     thisspritesheet.layers[0].layer.forEach(function (layer) {
         var newlayer = new Layer();
-        newlayer.x =  layer.$.x;
-        newlayer.y =  layer.$.y;
-        newlayer.frames= layer.frame.map(function(f){return f.$.name;});
-        newspritesheet.layers[layer.$.name]= newlayer;
+        newlayer.x = layer.$.x;
+        newlayer.y = layer.$.y;
+        newlayer.frames = layer.frame.map(function (f) { return f.$.name; });
+        newspritesheet.layers[layer.$.name] = newlayer;
     });
     thisspritesheet.states[0].state.forEach(function (state) {
         var newstate = new State();
-        newstate.layers = state.layer.map(function(l){return l.$.name;});
-        if(state.$.flip){
+        newstate.layers = state.layer.map(function (l) { return l.$.name; });
+        if (state.$.flip) {
             newstate.flip = state.$.flip;
         }
-        newspritesheet.states[state.$.name]= newstate;
+        newspritesheet.states[state.$.name] = newstate;
     });
     return newspritesheet;
 }
@@ -327,3 +331,31 @@ function deleteFolderRecursive(path) {
         fs.rmdirSync(path);
     }
 };
+
+
+
+///CWPM
+
+function listPackages(packageId) {
+    if (packageId) {
+        request('http://cwpm.azurewebsites.net/api/packages/'+packageId, function (error, response, body) {
+            if (!error && response.statusCode == 200) {
+                console.log("Versions of "+packageId+":");
+                var packages = JSON.parse(body);
+                packages.forEach(function (p) {
+                    console.log(" "+p.version + " published at " + p.date);
+                });
+            }
+        });
+    } else {
+        request('http://cwpm.azurewebsites.net/api/packages', function (error, response, body) {
+            if (!error && response.statusCode == 200) {
+                console.log("Packages published:");
+                var packages = JSON.parse(body);
+                packages.forEach(function (p) {
+                    console.log(" "+p.id + " by " + p.by);
+                });
+            }
+        });
+    }
+}
