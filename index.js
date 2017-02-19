@@ -16,7 +16,7 @@ prompt.message = "Some information is required";
 var userArguments = process.argv.slice(2);
 
 if (userArguments.length < 1) {
-    console.log("No action was specified");
+    console.log("No action was specified, use 'clockwork ?' to see the available actions");
 } else {
     switch (userArguments[0]) {
         case "init":
@@ -27,6 +27,9 @@ if (userArguments.length < 1) {
             break;
         case "list":
             listPackages(userArguments[1]);
+            break;
+        case "add":
+            addPackage(userArguments[1], userArguments[2]);
             break;
         case "register":
             prompt.get({
@@ -185,6 +188,15 @@ function readManifest(projectPath) {
     } catch (e) {
         return null;
     }
+}
+
+//Writes the manifest in the working directory
+function writeManifest(manifest, callback, projectPath) {
+    fs.writeFile((projectPath || path.resolve("./")) + "/manifest.json", JSON.stringify(manifest), function (err) {
+        if (callback()) {
+            callback(err)
+        };
+    });
 }
 
 //Run all the preprocessors on the package
@@ -481,12 +493,58 @@ function publish(sourceFile, packageId, packageVersion) {
             }, function (error, response, body) {
                 if (!error && response.statusCode == 200) {
                     console.log("Package published!");
-                }else{
+                } else {
                     console.log(body);
                 }
             });
         });
     });
+}
+
+function addPackage(packageName, packageVersion) {
+    if (typeof packageName === 'undefined') {
+        console.log("You must specify a module");
+        return;
+    }
+    var manifest = readManifest();
+    if (manifest == null) {
+        console.log("There is no Clockwork project in the working folder");
+        return;
+    }
+    request('http://cwpm.azurewebsites.net/api/packages/' + packageName, function (error, response, body) {
+        if (!error && response.statusCode == 200) {
+            var packages = JSON.parse(body);
+            if(packages.length==0){
+                console.log("This package can't be found on the online repository.");
+                return;
+            }
+            if (typeof packageVersion === 'undefined') {
+                var lastVersion = packages.sort(function (a, b) { return new Date(b.date) - new Date(a.date) })[0].version;
+                manifest.dependencies[packageName] = packages.sort(function (a, b) { return new Date(b.date) - new Date(a.date) })[0].version;
+                writeManifest(manifest, function (err) {
+                    if (err) {
+                        console.log("An error happened while trying to update the manifest");
+                    } else {
+                        console.log("Version " + lastVersion + " of " + packageName + " added to the dependencies");
+                    }
+                });
+            } else {
+                if (packages.filter(function (p) { return p.version == packageVersion; }).length > 0) {
+                    manifest.dependencies[packageName] = packageVersion;
+                    writeManifest(manifest, function (err) {
+                        if (err) {
+                            console.log("An error happened while trying to update the manifest");
+                        } else {
+                            console.log("Version " + packageVersion + " of " + packageName + " added to the dependencies");
+                        }
+                    });
+                } else {
+                    console.log("This version can't be found. Please list all the published versions with 'clockwork list " + packageName + "'");
+                }
+            }
+        }
+    });
+
 }
 
 //Help
@@ -501,6 +559,10 @@ function help() {
     console.log("   Lists the Clockwork modules available in the online repository");
     console.log("\n > clockwork list <moduleName>");
     console.log("   Lists the versions of that module available in the online repository");
+    console.log("\n > clockwork add <moduleName>");
+    console.log("   Adds the last version of the specified module as a dependency of the current project");
+    console.log("\n > clockwork add <moduleName> <moduleVersion>");
+    console.log("   Adds the specified version of the specified module as a dependency of the current project");
     console.log("\n > clockwork register");
     console.log("   Registers a developer account, allowing you to publish Clockwork modules");
     console.log("\n > clockwork publish");
