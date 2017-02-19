@@ -7,8 +7,14 @@ var parseString = require('xml2js').parseString;
 var ncp = require('ncp').ncp;
 var archiver = require('archiver');
 var request = require('request');
+var prompt = require('prompt');
+
+prompt.start();
+prompt.message = "Some information is required";
+
 
 var userArguments = process.argv.slice(2);
+
 if (userArguments.length < 1) {
     console.log("No action was specified");
 } else {
@@ -23,7 +29,52 @@ if (userArguments.length < 1) {
             listPackages(userArguments[1]);
             break;
         case "register":
-            register(userArguments[1], userArguments[2],userArguments[3]);
+            prompt.get({
+                properties: {
+                    username: {
+                        description: 'Enter your username',
+                        required: true
+                    },
+                    email: {
+                        description: 'Enter your email',
+                        pattern: /[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?/,
+                        required: true,
+                        message: 'This must be a valid email',
+                    },
+                    password: {
+                        description: 'Enter your password',
+                        hidden: true,
+                        required: true,
+                        replace: '*'
+                    }
+                }
+            }, function (err, result) {
+                register(result.username, result.email, result.password);
+            });
+            break;
+        case "publish":
+            prompt.get({
+                properties: {
+                    sourceFile: {
+                        description: 'Enter the location of the source file',
+                        required: true
+                    },
+                    packageId: {
+                        description: 'Enter the package name',
+                        pattern: /^[a-zA-Z0-9]+$/,
+                        message: 'Name must onyl contain alphanumeric characters',
+                        required: true
+                    },
+                    packageVersion: {
+                        description: 'Enter the package version',
+                        pattern: /^[a-zA-Z0-9\.\-]+$/,
+                        message: 'Name must only contain alphanumeric characters, dots and dashes',
+                        required: true
+                    }
+                }
+            }, function (err, result) {
+                tryPublish(result.sourceFile, result.packageId, result.packageVersion);
+            });
             break;
         case "help":
         case "?":
@@ -367,18 +418,80 @@ function listPackages(packageId) {
     }
 }
 
-function register(username,email, password) {
-    request.post({ url: 'http://cwpm.azurewebsites.net/api/developers', form: { name:username, email:email, password:password } }, function (err, httpResponse, body) {
-        if(JSON.parse(body).res=="OK"){
+function register(username, email, password) {
+    request.post({ url: 'http://cwpm.azurewebsites.net/api/developers', form: { name: username, email: email, password: password } }, function (err, httpResponse, body) {
+        if (JSON.parse(body).res == "OK") {
             console.log("User registered successfully");
-        }else{
+        } else {
             console.log("Error registering your account. Maybe that username is already taken?");
         }
     })
 }
 
+function tryPublish(sourceFile, packageId, packageVersion) {
+    request('http://cwpm.azurewebsites.net/api/packages/' + packageId, function (error, response, body) {
+        if (!error && response.statusCode == 200) {
+            var packages = JSON.parse(body);
+            var existing = packages.filter(function (p) {
+                return p.version == packageVersion;
+            });
+            if (existing.length == 0) {
+                publish(sourceFile, packageId, packageVersion);
+            } else {
+                prompt.get({
+                    properties: {
+                        confirm: {
+                            description: 'This package/version is already published, do you want to overwrite it? (Y/N)',
+                            pattern: /Y|N/,
+                            required: true
+                        },
+                    }
+                }, function (err, result) {
+                    if (result.confirm == "Y") {
+                        publish(sourceFile, packageId, packageVersion);
+                    }
+                });
+            }
+        }
+    });
+}
 
-function help(){
+function publish(sourceFile, packageId, packageVersion) {
+    fs.readFile(sourceFile, function (err, data) {
+        prompt.get({
+            properties: {
+                username: {
+                    description: 'Enter your username',
+                    required: true
+                },
+                password: {
+                    description: 'Enter your password',
+                    hidden: true,
+                    required: true,
+                    replace: '*'
+                }
+            }
+        }, function (err, result) {
+            request.post('http://cwpm.azurewebsites.net/api/packages/' + packageId + "/" + packageVersion, {
+                form: {
+                    username: result.username,
+                    password: result.password,
+                    source: data,
+                }
+            }, function (error, response, body) {
+                if (!error && response.statusCode == 200) {
+                    console.log("Package published!");
+                }else{
+                    console.log(body);
+                }
+            });
+        });
+    });
+}
+
+//Help
+
+function help() {
     console.log("The following commands are allowed:");
     console.log("\n > clockwork init <projectName>");
     console.log("   Creates an empty Clockwork project in the working directory");
@@ -388,6 +501,8 @@ function help(){
     console.log("   Lists the Clockwork modules available in the online repository");
     console.log("\n > clockwork list <moduleName>");
     console.log("   Lists the versions of that module available in the online repository");
-    console.log("\n > clockwork register <username> <email> <password>");
+    console.log("\n > clockwork register");
     console.log("   Registers a developer account, allowing you to publish Clockwork modules");
+    console.log("\n > clockwork publish");
+    console.log("   Publishes a module in the Clockwork online repository");
 }
