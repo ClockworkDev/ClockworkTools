@@ -31,6 +31,9 @@ if (userArguments.length < 1) {
         case "add":
             addPackage(userArguments[1], userArguments[2]);
             break;
+        case "update":
+            updatePackage(userArguments[1]);
+            break;
         case "register":
             prompt.get({
                 properties: {
@@ -193,7 +196,7 @@ function readManifest(projectPath) {
 //Writes the manifest in the working directory
 function writeManifest(manifest, callback, projectPath) {
     fs.writeFile((projectPath || path.resolve("./")) + "/manifest.json", JSON.stringify(manifest), function (err) {
-        if (callback()) {
+        if (callback) {
             callback(err)
         };
     });
@@ -538,7 +541,7 @@ function addPackage(packageName, packageVersion) {
                 }
                 if (typeof packageVersion === 'undefined') {
                     var lastVersion = packages.sort(function (a, b) { return new Date(b.date) - new Date(a.date) })[0].version;
-                    manifest.dependencies[packageName] = packages.sort(function (a, b) { return new Date(b.date) - new Date(a.date) })[0].version;
+                    manifest.dependencies[packageName] = lastVersion
                     writeManifest(manifest, function (err) {
                         if (err) {
                             console.log("An error happened while trying to update the manifest");
@@ -566,6 +569,46 @@ function addPackage(packageName, packageVersion) {
 
 }
 
+
+function updatePackage(packageName) {
+    var manifest = readManifest();
+    if (manifest == null) {
+        console.log("There is no Clockwork project in the working folder");
+        return;
+    }
+    if (typeof packageName === 'undefined') {
+        Promise.all(Object.keys(manifest.dependencies).map(function (x) { return updateDependencyPromise(x) })).then(function () {
+            writeManifest(manifest);
+        });
+    } else {
+        updateDependencyPromise(packageName).then(function () {
+            writeManifest(manifest);
+        });
+    }
+
+    function updateDependencyPromise(packageName) {
+        return new Promise(function (resolve, reject) {
+            request('http://cwpm.azurewebsites.net/api/packages/' + packageName, function (error, response, body) {
+                if (!error && response.statusCode == 200) {
+                    var packages = JSON.parse(body);
+                    if (packages.length == 0) {
+                        console.log("No versions of the module " + packageName + " have been found in the online repository.");
+                    } else {
+                        var lastVersion = packages.sort(function (a, b) { return new Date(b.date) - new Date(a.date) })[0].version;
+                        if (manifest.dependencies[packageName] != lastVersion) {
+                            console.log(packageName + " updated from " + manifest.dependencies[packageName] + " to " + lastVersion);
+                            manifest.dependencies[packageName] = lastVersion;
+                        } else {
+                            console.log(packageName + " is already up to date");
+                        }
+                    }
+                    resolve();
+                }
+            });
+        });
+    }
+}
+
 //Help
 
 function help() {
@@ -582,6 +625,10 @@ function help() {
     console.log("   Adds the last version of the specified module as a dependency of the current project");
     console.log("\n > clockwork add <moduleName> <moduleVersion>");
     console.log("   Adds the specified version of the specified module as a dependency of the current project");
+    console.log("\n > clockwork update <moduleName>");
+    console.log("   Updates the dependency to the specified package to the latest published version");
+    console.log("\n > clockwork update");
+    console.log("   Updates the dependencies to all the packages to the latest published versions");
     console.log("\n > clockwork register");
     console.log("   Registers a developer account, allowing you to publish Clockwork modules");
     console.log("\n > clockwork publish");
