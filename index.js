@@ -511,39 +511,58 @@ function addPackage(packageName, packageVersion) {
         console.log("There is no Clockwork project in the working folder");
         return;
     }
-    request('http://cwpm.azurewebsites.net/api/packages/' + packageName, function (error, response, body) {
-        if (!error && response.statusCode == 200) {
-            var packages = JSON.parse(body);
-            if(packages.length==0){
-                console.log("This package can't be found on the online repository.");
-                return;
+    if (typeof manifest.dependencies[packageName] === 'undefined') {
+        continueAddPackage();
+    } else {
+        prompt.get({
+            properties: {
+                confirm: {
+                    description: 'This package is already a dependency, do you want to change the version? (Y/N)',
+                    pattern: /Y|N/,
+                    required: true
+                },
             }
-            if (typeof packageVersion === 'undefined') {
-                var lastVersion = packages.sort(function (a, b) { return new Date(b.date) - new Date(a.date) })[0].version;
-                manifest.dependencies[packageName] = packages.sort(function (a, b) { return new Date(b.date) - new Date(a.date) })[0].version;
-                writeManifest(manifest, function (err) {
-                    if (err) {
-                        console.log("An error happened while trying to update the manifest");
-                    } else {
-                        console.log("Version " + lastVersion + " of " + packageName + " added to the dependencies");
-                    }
-                });
-            } else {
-                if (packages.filter(function (p) { return p.version == packageVersion; }).length > 0) {
-                    manifest.dependencies[packageName] = packageVersion;
+        }, function (err, result) {
+            if (result.confirm == "Y") {
+                continueAddPackage();
+            }
+        });
+    }
+    function continueAddPackage() {
+        request('http://cwpm.azurewebsites.net/api/packages/' + packageName, function (error, response, body) {
+            if (!error && response.statusCode == 200) {
+                var packages = JSON.parse(body);
+                if (packages.length == 0) {
+                    console.log("This package can't be found on the online repository.");
+                    return;
+                }
+                if (typeof packageVersion === 'undefined') {
+                    var lastVersion = packages.sort(function (a, b) { return new Date(b.date) - new Date(a.date) })[0].version;
+                    manifest.dependencies[packageName] = packages.sort(function (a, b) { return new Date(b.date) - new Date(a.date) })[0].version;
                     writeManifest(manifest, function (err) {
                         if (err) {
                             console.log("An error happened while trying to update the manifest");
                         } else {
-                            console.log("Version " + packageVersion + " of " + packageName + " added to the dependencies");
+                            console.log("Version " + lastVersion + " of " + packageName + " added to the dependencies");
                         }
                     });
                 } else {
-                    console.log("This version can't be found. Please list all the published versions with 'clockwork list " + packageName + "'");
+                    if (packages.filter(function (p) { return p.version == packageVersion; }).length > 0) {
+                        manifest.dependencies[packageName] = packageVersion;
+                        writeManifest(manifest, function (err) {
+                            if (err) {
+                                console.log("An error happened while trying to update the manifest");
+                            } else {
+                                console.log("Version " + packageVersion + " of " + packageName + " added to the dependencies");
+                            }
+                        });
+                    } else {
+                        console.log("This version can't be found. Please list all the published versions with 'clockwork list " + packageName + "'");
+                    }
                 }
             }
-        }
-    });
+        });
+    }
 
 }
 
