@@ -164,7 +164,7 @@
                 try {
                     fs.unlinkSync(workingPath + "/" + manifest.name + '.cw');
                 } catch (e) { }
-                var output = fs.createWriteStream(manifest.name + '.cw');
+                var output = fs.createWriteStream(workingPath+manifest.name + '.cw');
                 var archive = archiver('zip');
                 output.on('close', function () {
                     deleteFolderRecursive(workingPath + "/ClockworkPackageTemp/");
