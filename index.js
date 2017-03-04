@@ -111,7 +111,7 @@
                 folder.folders.forEach(createFolder.bind(null, path));
             }
         }
-        var newProject = require(rootPath+'template/newProject.js');
+        var newProject = require('./template/newProject.js');
         newProject.folders.forEach(createFolder.bind(null, ""));
         newProject.files.forEach(file => {
             fs.readFile(__dirname + "/" + file.file, 'base64', function (err, data) {
