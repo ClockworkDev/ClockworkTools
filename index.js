@@ -25,7 +25,7 @@
                 createProject(userArguments[1]);
                 break;
             case "build":
-                buildProject();
+                buildProject(x => console.log("The package has been successfully generated, you can find it at " + x));
                 break;
             case "list":
                 listPackages(userArguments[1]);
@@ -132,10 +132,10 @@
     }
 
     //Looks for a project in the working directory and creates a Clockwork package
-    function buildProject() {
+    function buildProject(callback) {
         var manifest = readManifest();
         if (manifest != null) {
-            var path = generatePackage(manifest).then(x => console.log("The package has been successfully generated, you can find it at " + x));
+            var path = generatePackage(manifest).then(callback);
         } else {
             console.log("The current directory does not contain a Clockwork project");
         }
