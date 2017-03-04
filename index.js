@@ -12,6 +12,7 @@ var prompt = require('prompt');
 prompt.start();
 prompt.message = "Some information is required";
 
+var getDataViaPrompt = function(data,callback){return prompt.get(data,callback);};
 
 var userArguments = process.argv.slice(2);
 
@@ -29,7 +30,7 @@ if (userArguments.length < 1) {
             listPackages(userArguments[1]);
             break;
         case "add":
-            addPackage(userArguments[1], userArguments[2]);
+            addPackage(getDataViaPrompt,userArguments[1], userArguments[2]);
             break;
         case "update":
             updatePackage(userArguments[1]);
@@ -79,7 +80,7 @@ if (userArguments.length < 1) {
                     }
                 }
             }, function (err, result) {
-                tryPublish(result.sourceFile, result.packageId, result.packageVersion);
+                tryPublish(getDataViaPrompt,result.sourceFile, result.packageId, result.packageVersion);
             });
             break;
         case "help":
@@ -443,7 +444,7 @@ function register(username, email, password) {
     })
 }
 
-function tryPublish(sourceFile, packageId, packageVersion) {
+function tryPublish(getData,sourceFile, packageId, packageVersion) {
     request('http://cwpm.azurewebsites.net/api/packages/' + packageId, function (error, response, body) {
         if (!error && response.statusCode == 200) {
             var packages = JSON.parse(body);
@@ -451,9 +452,9 @@ function tryPublish(sourceFile, packageId, packageVersion) {
                 return p.version == packageVersion;
             });
             if (existing.length == 0) {
-                publish(sourceFile, packageId, packageVersion);
+                publish(getData,sourceFile, packageId, packageVersion);
             } else {
-                prompt.get({
+                getData({
                     properties: {
                         confirm: {
                             description: 'This package/version is already published, do you want to overwrite it? (Y/N)',
@@ -463,7 +464,7 @@ function tryPublish(sourceFile, packageId, packageVersion) {
                     }
                 }, function (err, result) {
                     if (result.confirm == "Y") {
-                        publish(sourceFile, packageId, packageVersion);
+                        publish(getData,sourceFile, packageId, packageVersion);
                     }
                 });
             }
@@ -471,9 +472,9 @@ function tryPublish(sourceFile, packageId, packageVersion) {
     });
 }
 
-function publish(sourceFile, packageId, packageVersion) {
+function publish(getData,sourceFile, packageId, packageVersion) {
     fs.readFile(sourceFile, function (err, data) {
-        prompt.get({
+        getData({
             properties: {
                 username: {
                     description: 'Enter your username',
@@ -504,7 +505,7 @@ function publish(sourceFile, packageId, packageVersion) {
     });
 }
 
-function addPackage(packageName, packageVersion) {
+function addPackage(getData,packageName, packageVersion) {
     if (typeof packageName === 'undefined') {
         console.log("You must specify a module");
         return;
@@ -517,7 +518,7 @@ function addPackage(packageName, packageVersion) {
     if (typeof manifest.dependencies[packageName] === 'undefined') {
         continueAddPackage();
     } else {
-        prompt.get({
+        getData({
             properties: {
                 confirm: {
                     description: 'This package is already a dependency, do you want to change the version? (Y/N)',
@@ -634,3 +635,15 @@ function help() {
     console.log("\n > clockwork publish");
     console.log("   Publishes a module in the Clockwork online repository");
 }
+
+module.exports = function (getData) {
+    return {
+        createProject: createProject,
+        buildProject: buildProject,
+        listPackages: listPackages,
+        addPackage: addPackage.bind(null,getData),
+        updatePackage: updatePackage,
+        register: register,
+        tryPublish: tryPublish.bind(null,getData)
+    }
+};
