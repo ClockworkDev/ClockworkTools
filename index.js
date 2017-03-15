@@ -13,6 +13,8 @@
     prompt.start();
     prompt.message = "Some information is required";
 
+    var rootPath = "./";
+
     var getDataViaPrompt = function (data, callback) { return prompt.get(data, callback); };
 
     var userArguments = process.argv.slice(2);
@@ -164,7 +166,7 @@
                 try {
                     fs.unlinkSync(workingPath + "/" + manifest.name + '.cw');
                 } catch (e) { }
-                var output = fs.createWriteStream(workingPath+ "/" +manifest.name + '.cw');
+                var output = fs.createWriteStream(workingPath + "/" + manifest.name + '.cw');
                 var archive = archiver('zip');
                 output.on('close', function () {
                     deleteFolderRecursive(workingPath + "/ClockworkPackageTemp/");
@@ -373,12 +375,12 @@
             var newlayer = new Layer();
             newlayer.x = layer.$.x;
             newlayer.y = layer.$.y;
-            newlayer.frames = layer.frame.map(function (f) { return f.$.name; });
+            newlayer.frames = layer.frame ? layer.frame.map(function (f) { return f.$.name; }) : [];
             newspritesheet.layers[layer.$.name] = newlayer;
         });
         thisspritesheet.states[0].state.forEach(function (state) {
             var newstate = new State();
-            newstate.layers = state.layer.map(function (l) { return l.$.name; });
+            newstate.layers = state.layer ? state.layer.map(function (l) { return l.$.name; }) : [];
             if (state.$.flip) {
                 newstate.flip = state.$.flip;
             }
@@ -637,7 +639,6 @@
         console.log("   Publishes a module in the Clockwork online repository");
     }
 
-    var rootPath = "./";
 
     module.exports = function (cwd, getData) {
         rootPath = cwd;
