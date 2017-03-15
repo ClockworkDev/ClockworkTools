@@ -1,8 +1,8 @@
 {
     "name": "#projectName#",
     "scope": "gameFiles",
-    "presets": [
-        "presets.js"
+    "components": [
+        "components.js"
     ],
     "levels": [
         "levels.xml"
@@ -14,11 +14,7 @@
         "w": 800,
         "h": 400
     },
-    "externalCode":[],
-    "dependencies": {
-        "presets":["mouse","storage","notificationManager","keyboard"],
-        "collisions":["pointsAndBoxes"]
-    },
+    "dependencies": {},
     "themeColor":"#4B5",
     "backgroundColor":"#333",
     "tileIcon":"tileIcon.png",

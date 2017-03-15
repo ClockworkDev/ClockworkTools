@@ -3,7 +3,7 @@ exports.files = [
         name: "manifest.json", file: "template/manifest.json", template:true
     },
     {
-        name: "gameFiles/presets.js", file: "template/presets.js"
+        name: "gameFiles/components.js", file: "template/components.js"
     },
     {
         name: "gameFiles/levels.xml",file: "template/levels.xml"
