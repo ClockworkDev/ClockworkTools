@@ -161,7 +161,7 @@
                 }
             })
         }).then(function () {
-            return preprocessPackage(workingPath + "\\ClockworkPackageTemp");
+            return preprocessPackage(workingPath + "/ClockworkPackageTemp");
         }).then(x => {
             return new Promise((res, rej) => {
                 try {
