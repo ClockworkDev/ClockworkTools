@@ -151,6 +151,7 @@
         } catch (e) { }
         copyFileSync(workingPath + '/manifest.json', workingPath + '/ClockworkPackageTemp/manifest.json');
         return new Promise((res, rej) => {
+            console.log("Copying project files...");
             ncp(workingPath + '/' + manifest.scope, workingPath + '/ClockworkPackageTemp/' + manifest.scope, function (err) {
                 if (err) {
                     console.error(err);
@@ -169,6 +170,7 @@
                 var output = fs.createWriteStream(workingPath + "/" + manifest.name + '.cw');
                 var archive = archiver('zip');
                 output.on('close', function () {
+                    console.log("Deleting temporary files...");
                     deleteFolderRecursive(workingPath + "/ClockworkPackageTemp/");
                     res();
                 });
@@ -176,6 +178,7 @@
                     throw err;
                 });
                 archive.pipe(output);
+                console.log("Creating package..");
                 archive.glob("**", {
                     cwd: workingPath + "/ClockworkPackageTemp/"
                 })
@@ -211,6 +214,7 @@
         var manifest = readManifest();
         //Convert xml spritesheets to json
         return new Promise((resolvef, rejectf) => {
+            console.log("Processing levels...");
             var levels = manifest.levels.map(function (oldName, i) {
                 if (oldName.indexOf(".xml") != -1) {
                     var newName = oldName.split(".xml").join(".json");
@@ -240,6 +244,7 @@
                 }
             });
             var spritesheets = manifest.spritesheets.map(function (oldName, i) {
+                console.log("Processing spritesheets...");
                 if (oldName.indexOf(".xml") != -1) {
                     var newName = oldName.split(".xml").join(".json");
                     manifest.spritesheets[i] = newName;
@@ -268,6 +273,7 @@
                 }
             });
             Promise.all(levels.concat(spritesheets)).then(x => {
+                console.log("Updating manifest...");
                 fs.writeFile(path + "/manifest.json", JSON.stringify(manifest), function (err) {
                     if (err) {
                         return console.error(err);
