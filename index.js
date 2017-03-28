@@ -14,6 +14,7 @@
     prompt.message = "Some information is required";
 
     var rootPath = "./";
+    var log = function (x) { }; //By default, dont log anything
 
     var getDataViaPrompt = function (data, callback) { return prompt.get(data, callback); };
 
@@ -220,6 +221,7 @@
                     var newName = oldName.split(".xml").join(".json");
                     manifest.levels[i] = newName;
                     return new Promise((resolve, reject) => {
+                        log("Reading " + path + "/" + manifest.scope + "/" + oldName);
                         fs.readFile(path + "/" + manifest.scope + "/" + oldName, function (err, data) {
                             if (err) {
                                 return console.error(err);
@@ -228,6 +230,7 @@
                                     if (err) {
                                         return console.error(err);
                                     } else {
+                                        log("Writing " + path + "/" + manifest.scope + "/" + newName);
                                         fs.writeFile(path + "/" + manifest.scope + "/" + newName, JSON.stringify(XMLlevelsToJson(result)), function (err) {
                                             if (err) {
                                                 return console.error(err);
@@ -646,8 +649,11 @@
     }
 
 
-    module.exports = function (cwd, getData) {
+    module.exports = function (cwd, getData, logFunction) {
         rootPath = cwd;
+        if (logFunction) {
+            log = logFunction;
+        }
         return {
             createProject: createProject,
             buildProject: buildProject,
