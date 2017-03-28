@@ -194,7 +194,7 @@
     //Reads the manifest in the working directory
     function readManifest(projectPath) {
         try {
-            var manifest = require((projectPath || path.resolve(rootPath)) + "/manifest.json");
+            var manifest = JSON.parse(fs.readFileSync((projectPath || path.resolve(rootPath)) + "/manifest.json"));
             return manifest;
         } catch (e) {
             return null;
