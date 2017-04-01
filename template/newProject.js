@@ -17,6 +17,9 @@ exports.files = [
     {
         name: "gameFiles/tileIcon.png", file: "template/tileIcon.png"
     },
+    {
+        name: ".vscode/launch.json", file: "template/launch.json"
+    },
 ];
 
 exports.folders = [
@@ -24,5 +27,8 @@ exports.folders = [
         name: "gameFiles", folders: [
             { name: "images" }
         ]
+    },
+    {
+        name: ".vscode"
     }
 ]

@@ -11,8 +11,8 @@
         "spritesheets.xml"
     ],
     "screenResolution": {
-        "w": 800,
-        "h": 400
+        "w": 1366,
+        "h": 768
     },
     "dependencies": {},
     "themeColor":"#4B5",
