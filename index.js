@@ -363,6 +363,9 @@
         if (thisspritesheet.$.src != undefined) {
             newspritesheet.src = thisspritesheet.$.src;
         }
+        if (thisspritesheet.$.positionBasedOptimizations != undefined) {
+            newspritesheet.positionBasedOptimizations = thisspritesheet.$.positionBasedOptimizations;
+        }
         thisspritesheet.frames[0].frame.forEach(function (frame) {
             var newframe = new Frame();
             if (frame.$.code == undefined) {
