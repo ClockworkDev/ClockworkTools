@@ -1,6 +1,6 @@
 {
   "name": "clockwork-tools",
-  "version": "1.7.4",
+  "version": "1.7.5",
   "description": "CLI tools for developing Clockwork games",
   "main": "index.js",
   "bin": {
