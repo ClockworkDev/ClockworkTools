@@ -231,23 +231,20 @@
                             if (err) {
                                 return console.error(err);
                             } else {
-                                try {
-                                    parseString(data, function (err, result) {
-                                        if (err) {
-                                            return console.error(err);
-                                        } else {
-                                            log("Writing " + path + "/" + manifest.scope + "/" + newName);
-                                            fs.writeFile(path + "/" + manifest.scope + "/" + newName, JSON.stringify(XMLlevelsToJson(result)), function (err) {
-                                                if (err) {
-                                                    return console.error(err);
-                                                }
-                                                resolve();
-                                            });
-                                        }
-                                    });
-                                } catch (e) {
-                                    showError("There are errors in " + oldName + ", check your XML.");
-                                }
+                                parseString(data, function (err, result) {
+                                    if (err) {
+                                        showError("There are errors in " + oldName + ", check your XML.");
+                                        resolve();
+                                    } else {
+                                        log("Writing " + path + "/" + manifest.scope + "/" + newName);
+                                        fs.writeFile(path + "/" + manifest.scope + "/" + newName, JSON.stringify(XMLlevelsToJson(result)), function (err) {
+                                            if (err) {
+                                                return console.error(err);
+                                            }
+                                            resolve();
+                                        });
+                                    }
+                                });
                             }
                         });
                     });
@@ -265,22 +262,19 @@
                             if (err) {
                                 return console.error(err);
                             } else {
-                                try {
-                                    parseString(data, function (err, result) {
-                                        if (err) {
-                                            return console.error(err);
-                                        } else {
-                                            fs.writeFile(path + "/" + manifest.scope + "/" + newName, JSON.stringify(XMLspritesheetsToJson(result)), function (err) {
-                                                if (err) {
-                                                    return console.error(err);
-                                                }
-                                                resolve();
-                                            });
-                                        }
-                                    });
-                                } catch (e) {
-                                    showError("There are errors in " + oldName + ", check your XML.");
-                                }
+                                parseString(data, function (err, result) {
+                                    if (err) {
+                                        showError("There are errors in " + oldName + ", check your XML.");
+                                        resolve();
+                                    } else {
+                                        fs.writeFile(path + "/" + manifest.scope + "/" + newName, JSON.stringify(XMLspritesheetsToJson(result)), function (err) {
+                                            if (err) {
+                                                return console.error(err);
+                                            }
+                                            resolve();
+                                        });
+                                    }
+                                });
                             }
                         });
                     });
@@ -288,7 +282,7 @@
                     return new Promise(function (resolve, reject) { return resolve() });
                 }
             });
-            Promise.all(levels.concat(spritesheets)).then(function(x) {
+            Promise.all(levels.concat(spritesheets)).then(function (x) {
                 console.log("Updating manifest...");
                 fs.writeFile(path + "/manifest.json", JSON.stringify(manifest), function (err) {
                     if (err) {
