@@ -29,7 +29,7 @@
                 createProject(userArguments[1]);
                 break;
             case "build":
-                buildProject(x => console.log("The package has been successfully generated, you can find it at " + x));
+                buildProject(function (x) { console.log("The package has been successfully generated, you can find it at " + x) });
                 break;
             case "list":
                 listPackages(userArguments[1]);
@@ -117,7 +117,7 @@
         }
         var newProject = require('./template/newProject.js');
         newProject.folders.forEach(createFolder.bind(null, ""));
-        newProject.files.forEach(file => {
+        newProject.files.forEach(function (file) {
             fs.readFile(__dirname + "/" + file.file, 'base64', function (err, data) {
                 if (err) {
                     return console.log(err);
@@ -156,7 +156,7 @@
             fs.mkdirSync(workingPath + '/ClockworkPackageTemp');
         } catch (e) { }
         copyFileSync(workingPath + '/manifest.json', workingPath + '/ClockworkPackageTemp/manifest.json');
-        return new Promise((res, rej) => {
+        return new Promise(function (res, rej) {
             console.log("Copying project files...");
             ncp(workingPath + '/' + manifest.scope, workingPath + '/ClockworkPackageTemp/' + manifest.scope, function (err) {
                 if (err) {
@@ -168,8 +168,8 @@
             })
         }).then(function () {
             return preprocessPackage(workingPath + "/ClockworkPackageTemp");
-        }).then(x => {
-            return new Promise((res, rej) => {
+        }).then(function (x) {
+            return new Promise(function (res, rej) {
                 try {
                     fs.unlinkSync(workingPath + "/" + manifest.name + '.cw');
                 } catch (e) { }
@@ -193,7 +193,7 @@
                 // ]);
                 archive.finalize();
             });
-        }).then(x => workingPath + "/" + manifest.name + ".cw");
+        }).then(function (x) { return workingPath + "/" + manifest.name + ".cw" });
     }
 
     //Reads the manifest in the working directory
@@ -219,19 +219,19 @@
     function preprocessPackage(path) {
         var manifest = readManifest();
         //Convert xml spritesheets to json
-        return new Promise((resolvef, rejectf) => {
+        return new Promise(function (resolvef, rejectf) {
             console.log("Processing levels...");
             var levels = manifest.levels.map(function (oldName, i) {
                 if (oldName.indexOf(".xml") != -1) {
                     var newName = oldName.split(".xml").join(".json");
                     manifest.levels[i] = newName;
-                    return new Promise((resolve, reject) => {
+                    return new Promise(function (resolve, reject) {
                         log("Reading " + path + "/" + manifest.scope + "/" + oldName);
-                        try {
-                            fs.readFile(path + "/" + manifest.scope + "/" + oldName, function (err, data) {
-                                if (err) {
-                                    return console.error(err);
-                                } else {
+                        fs.readFile(path + "/" + manifest.scope + "/" + oldName, function (err, data) {
+                            if (err) {
+                                return console.error(err);
+                            } else {
+                                try {
                                     parseString(data, function (err, result) {
                                         if (err) {
                                             return console.error(err);
@@ -245,14 +245,14 @@
                                             });
                                         }
                                     });
+                                } catch (e) {
+                                    showError("There are errors in " + oldName + ", check your XML.");
                                 }
-                            });
-                        } catch (e) {
-                            throw "There are errors in " + oldName + ", check your XML.";
-                        }
+                            }
+                        });
                     });
                 } else {
-                    return new Promise((resolve, reject) => { resolve() });
+                    return new Promise(function (resolve, reject) { return resolve() });
                 }
             });
             var spritesheets = manifest.spritesheets.map(function (oldName, i) {
@@ -260,12 +260,12 @@
                 if (oldName.indexOf(".xml") != -1) {
                     var newName = oldName.split(".xml").join(".json");
                     manifest.spritesheets[i] = newName;
-                    return new Promise((resolve, reject) => {
-                        try {
-                            fs.readFile(path + "/" + manifest.scope + "/" + oldName, function (err, data) {
-                                if (err) {
-                                    return console.error(err);
-                                } else {
+                    return new Promise(function (resolve, reject) {
+                        fs.readFile(path + "/" + manifest.scope + "/" + oldName, function (err, data) {
+                            if (err) {
+                                return console.error(err);
+                            } else {
+                                try {
                                     parseString(data, function (err, result) {
                                         if (err) {
                                             return console.error(err);
@@ -278,17 +278,17 @@
                                             });
                                         }
                                     });
+                                } catch (e) {
+                                    showError("There are errors in " + oldName + ", check your XML.");
                                 }
-                            });
-                        } catch (e) {
-                            throw "There are errors in " + oldName + ", check your XML.";
-                        }
+                            }
+                        });
                     });
                 } else {
-                    return new Promise((resolve, reject) => { resolve() });
+                    return new Promise(function (resolve, reject) { return resolve() });
                 }
             });
-            Promise.all(levels.concat(spritesheets)).then(x => {
+            Promise.all(levels.concat(spritesheets)).then(function(x) {
                 console.log("Updating manifest...");
                 fs.writeFile(path + "/manifest.json", JSON.stringify(manifest), function (err) {
                     if (err) {
