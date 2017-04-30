@@ -15,6 +15,7 @@
 
     var rootPath = "./";
     var log = function (x) { }; //By default, dont log anything
+    var showError = function (x) { console.log(x); };//By default, output errors to the console
 
     var getDataViaPrompt = function (data, callback) { return prompt.get(data, callback); };
 
@@ -138,7 +139,11 @@
     function buildProject(callback) {
         var manifest = readManifest();
         if (manifest != null) {
-            var path = generatePackage(manifest).then(callback);
+            try {
+                var path = generatePackage(manifest).then(callback);
+            } catch (e) {
+                showError("Error:" + e);
+            }
         } else {
             console.log("The current directory does not contain a Clockwork project");
         }
@@ -222,25 +227,29 @@
                     manifest.levels[i] = newName;
                     return new Promise((resolve, reject) => {
                         log("Reading " + path + "/" + manifest.scope + "/" + oldName);
-                        fs.readFile(path + "/" + manifest.scope + "/" + oldName, function (err, data) {
-                            if (err) {
-                                return console.error(err);
-                            } else {
-                                parseString(data, function (err, result) {
-                                    if (err) {
-                                        return console.error(err);
-                                    } else {
-                                        log("Writing " + path + "/" + manifest.scope + "/" + newName);
-                                        fs.writeFile(path + "/" + manifest.scope + "/" + newName, JSON.stringify(XMLlevelsToJson(result)), function (err) {
-                                            if (err) {
-                                                return console.error(err);
-                                            }
-                                            resolve();
-                                        });
-                                    }
-                                });
-                            }
-                        });
+                        try {
+                            fs.readFile(path + "/" + manifest.scope + "/" + oldName, function (err, data) {
+                                if (err) {
+                                    return console.error(err);
+                                } else {
+                                    parseString(data, function (err, result) {
+                                        if (err) {
+                                            return console.error(err);
+                                        } else {
+                                            log("Writing " + path + "/" + manifest.scope + "/" + newName);
+                                            fs.writeFile(path + "/" + manifest.scope + "/" + newName, JSON.stringify(XMLlevelsToJson(result)), function (err) {
+                                                if (err) {
+                                                    return console.error(err);
+                                                }
+                                                resolve();
+                                            });
+                                        }
+                                    });
+                                }
+                            });
+                        } catch (e) {
+                            throw "There are errors in " + oldName + ", check your XML.";
+                        }
                     });
                 } else {
                     return new Promise((resolve, reject) => { resolve() });
@@ -252,24 +261,28 @@
                     var newName = oldName.split(".xml").join(".json");
                     manifest.spritesheets[i] = newName;
                     return new Promise((resolve, reject) => {
-                        fs.readFile(path + "/" + manifest.scope + "/" + oldName, function (err, data) {
-                            if (err) {
-                                return console.error(err);
-                            } else {
-                                parseString(data, function (err, result) {
-                                    if (err) {
-                                        return console.error(err);
-                                    } else {
-                                        fs.writeFile(path + "/" + manifest.scope + "/" + newName, JSON.stringify(XMLspritesheetsToJson(result)), function (err) {
-                                            if (err) {
-                                                return console.error(err);
-                                            }
-                                            resolve();
-                                        });
-                                    }
-                                });
-                            }
-                        });
+                        try {
+                            fs.readFile(path + "/" + manifest.scope + "/" + oldName, function (err, data) {
+                                if (err) {
+                                    return console.error(err);
+                                } else {
+                                    parseString(data, function (err, result) {
+                                        if (err) {
+                                            return console.error(err);
+                                        } else {
+                                            fs.writeFile(path + "/" + manifest.scope + "/" + newName, JSON.stringify(XMLspritesheetsToJson(result)), function (err) {
+                                                if (err) {
+                                                    return console.error(err);
+                                                }
+                                                resolve();
+                                            });
+                                        }
+                                    });
+                                }
+                            });
+                        } catch (e) {
+                            throw "There are errors in " + oldName + ", check your XML.";
+                        }
                     });
                 } else {
                     return new Promise((resolve, reject) => { resolve() });
@@ -652,10 +665,13 @@
     }
 
 
-    module.exports = function (cwd, getData, logFunction) {
+    module.exports = function (cwd, getData, logFunction, showErrorMessage) {
         rootPath = cwd;
         if (logFunction) {
             log = logFunction;
+        }
+        if (showErrorMessage) {
+            showError = showErrorMessage;
         }
         return {
             createProject: createProject,
