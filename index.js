@@ -21,6 +21,10 @@
 
     var userArguments = process.argv.slice(2);
 
+    var bridges = {
+        web: require('clockwork-web-bridge')
+    };
+
     if (userArguments.length < 1) {
         console.log("No action was specified, use 'clockwork ?' to see the available actions");
     } else {
@@ -87,6 +91,9 @@
                 }, function (err, result) {
                     tryPublish(getDataViaPrompt, result.sourceFile, result.packageId, result.packageVersion);
                 });
+                break;
+            case "bridge":
+                runBridge(userArguments[1]);
                 break;
             case "help":
             case "?":
@@ -632,6 +639,23 @@
         }
     }
 
+
+    function runBridge(name) {
+        if (bridges[name]) {
+            buildProject(function (packageName) {
+                if (!fs.existsSync(name)) {
+                    fs.mkdirSync(name);
+                }
+                bridges[name](packageName, name);
+            });
+        } else {
+            console.log("This bridge can't be found, the following bridges are available:");
+            for (var bridge in bridges) {
+                console.log(" " + bridge);
+            }
+        }
+    }
+
     //Help
 
     function help() {
@@ -656,6 +680,8 @@
         console.log("   Registers a developer account, allowing you to publish Clockwork modules");
         console.log("\n > clockwork publish");
         console.log("   Publishes a module in the Clockwork online repository");
+        console.log("\n > clockwork bridge <bridgeName>");
+        console.log("   Uses the specified bridge to export the game");
     }
 
 

@@ -29,6 +29,7 @@
   "homepage": "https://github.com/arcadiogarcia/ClockworkTools#readme",
   "dependencies": {
     "archiver": "^1.3.0",
+    "clockwork-web-bridge": "^0.2.8",
     "ncp": "^2.0.0",
     "prompt": "^1.0.0",
     "request": "^2.79.0",
