@@ -641,18 +641,24 @@
     }
 
 
-    function runBridge(name) {
+    function runBridge(name, callback) {
         if (bridges[name]) {
             buildProject(function (packageName) {
                 if (!fs.existsSync(name)) {
                     fs.mkdirSync(name);
                 }
                 bridges[name](packageName, name);
+                if (callback) {
+                    callback(true);
+                }
             });
         } else {
             console.log("This bridge can't be found, the following bridges are available:");
             for (var bridge in bridges) {
                 console.log(" " + bridge);
+            }
+            if (callback) {
+                callback(false);
             }
         }
     }
@@ -701,7 +707,8 @@
             addPackage: addPackage.bind(null, getData),
             updatePackage: updatePackage,
             register: register,
-            tryPublish: tryPublish.bind(null, getData)
+            tryPublish: tryPublish.bind(null, getData),
+            runBridge: runBridge
         }
     };
 
