@@ -644,10 +644,10 @@
     function runBridge(name, callback) {
         if (bridges[name]) {
             buildProject(function (packageName) {
-                if (!fs.existsSync(name)) {
-                    fs.mkdirSync(name);
+                if (!fs.existsSync(rootPath + name)) {
+                    fs.mkdirSync(rootPath + name);
                 }
-                bridges[name](packageName, name);
+                bridges[name](packageName, rootPath + name);
                 if (callback) {
                     callback(true);
                 }
