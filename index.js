@@ -22,7 +22,8 @@
     var userArguments = process.argv.slice(2);
 
     var bridges = {
-        web: require('clockwork-web-bridge')
+        web: require('clockwork-web-bridge'),
+        uwp: require('clockwork-uwp-bridge')
     };
 
     if (userArguments.length < 1) {
