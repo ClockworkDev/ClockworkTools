@@ -245,7 +245,7 @@
                                         resolve();
                                     } else {
                                         log("Writing " + path + "/" + manifest.scope + "/" + newName);
-                                        fs.writeFile(path + "/" + manifest.scope + "/" + newName, JSON.stringify(XMLlevelsToJson(result)), function (err) {
+                                        fs.writeFile(path + "/" + manifest.scope + "/" + newName, JSON.stringify(XMLlevelsToJson(result, oldName)), function (err) {
                                             if (err) {
                                                 return console.error(err);
                                             }
@@ -304,43 +304,51 @@
 
     //Levels logic
 
-    function XMLlevelsToJson(result) {
-        return result.levels.level.map(XMLlevelToJson);
+    function XMLlevelsToJson(result, oldName) {
+        try {
+            return result.levels.level.map(XMLlevelToJson);
+        } catch (e) {
+            showError(oldName + " does not contain a valid XML levels file")
+        }
     }
 
     function XMLlevelToJson(thislevel) {
         var level = {};
         level.id = thislevel.$.id;
-        level.objects = thislevel.object.map(function (thisobject) {
-            var object = {};
-            //Set name
-            object.name = thisobject.$.name
-            //Set type
-            if (thisobject.type && thisobject.type.length > 0) {
-                //Composition
-                object.type = thisobject.type.map(function (x) { return x.$.id; });
-            } else {
-                //Inheritance
-                object.type = thisobject.$.type;
-            }
-            //Set spritesheet
-            object.sprite = thisobject.$.spritesheet ? thisobject.$.spritesheet : null;
-            //Set whether the object is static
-            object.isstatic = thisobject.$.static ? thisobject.$.static : null;
-            //Set x,y,z
-            object.x = +thisobject.$.x;
-            object.y = +thisobject.$.y;
-            object.z = thisobject.$.z ? +thisobject.$.z : null;
-            //Set vars
-            try {
-                object.vars = thisobject.$.vars ? JSON.parse(thisobject.$.vars) : {};
-            } catch (e) {
-                showError("This string should be a valid JSON object but it is not");
-                showError(thisobject.$.vars);
-                object.vars = {};
-            }
-            return object;
-        });
+        if (thislevel.object) {
+            level.objects = thislevel.object.map(function (thisobject) {
+                var object = {};
+                //Set name
+                object.name = thisobject.$.name
+                //Set type
+                if (thisobject.type && thisobject.type.length > 0) {
+                    //Composition
+                    object.type = thisobject.type.map(function (x) { return x.$.id; });
+                } else {
+                    //Inheritance
+                    object.type = thisobject.$.type;
+                }
+                //Set spritesheet
+                object.sprite = thisobject.$.spritesheet ? thisobject.$.spritesheet : null;
+                //Set whether the object is static
+                object.isstatic = thisobject.$.static ? thisobject.$.static : null;
+                //Set x,y,z
+                object.x = +thisobject.$.x;
+                object.y = +thisobject.$.y;
+                object.z = thisobject.$.z ? +thisobject.$.z : null;
+                //Set vars
+                try {
+                    object.vars = thisobject.$.vars ? JSON.parse(thisobject.$.vars) : {};
+                } catch (e) {
+                    showError("This string should be a valid JSON object but it is not");
+                    showError(thisobject.$.vars);
+                    object.vars = {};
+                }
+                return object;
+            });
+        } else {
+            level.objects = [];
+        }
         return level;
     }
 
