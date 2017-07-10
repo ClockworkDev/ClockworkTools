@@ -332,7 +332,13 @@
             object.y = +thisobject.$.y;
             object.z = thisobject.$.z ? +thisobject.$.z : null;
             //Set vars
-            object.vars = thisobject.$.vars ? JSON.parse(thisobject.$.vars) : {};
+            try {
+                object.vars = thisobject.$.vars ? JSON.parse(thisobject.$.vars) : {};
+            } catch (e) {
+                showError("This string should be a valid JSON object but it is not");
+                showError(thisobject.$.vars);
+                object.vars = {};
+            }
             return object;
         });
         return level;
