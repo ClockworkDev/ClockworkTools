@@ -29,11 +29,11 @@
   "homepage": "https://github.com/arcadiogarcia/ClockworkTools#readme",
   "dependencies": {
     "archiver": "^1.3.0",
-    "clockwork-uwp-bridge": "^0.1.1",
-    "clockwork-web-bridge": "^0.2.11",
+    "clockwork-uwp-bridge": "^0.1.4",
+    "clockwork-web-bridge": "^0.2.16",
     "ncp": "^2.0.0",
     "prompt": "^1.0.0",
-    "request": "^2.79.0",
-    "xml2js": "^0.4.17"
+    "request": "^2.81.0",
+    "xml2js": "^0.4.19"
   }
 }
