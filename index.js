@@ -262,6 +262,7 @@
             });
             var spritesheets = manifest.spritesheets.map(function (oldName, i) {
                 console.log("Processing spritesheets...");
+                //If it is an XML file, convert to JSON
                 if (oldName.indexOf(".xml") != -1) {
                     var newName = oldName.split(".xml").join(".json");
                     manifest.spritesheets[i] = newName;
@@ -286,8 +287,36 @@
                             }
                         });
                     });
-                } else {
-                    return new Promise(function (resolve, reject) { return resolve() });
+                } else if (oldName.indexOf(".js") == oldName.length - 3) {
+                    //If it a .js file, stringify functions
+                    return new Promise(function (resolve, reject) {
+                        fs.readFile(path + "/" + manifest.scope + "/" + oldName, function (err, data) {
+                            if (err) {
+                                return console.error(err);
+                            } else {
+                                var spritesheetContent;
+                                eval("spritesheetContent = " + data);
+                                //Stringify functions
+                                (function stringifyFunctions(o) {
+                                    for (x in o) {
+                                        if (typeof o[x] == "object") {
+                                            stringifyFunctions(o[x]);
+                                        }
+                                        if (typeof o[x] == "function") {
+                                            o[x] = o[x].toString();
+                                        }
+                                    }
+                                })(spritesheetContent);
+                                var newName = oldName.split(".js").join(".json");
+                                fs.writeFile(path + "/" + manifest.scope + "/" + newName, JSON.stringify(spritesheetContent), function (err) {
+                                    if (err) {
+                                        return console.error(err);
+                                    }
+                                    resolve();
+                                });
+                            }
+                        });
+                    });
                 }
             });
             Promise.all(levels.concat(spritesheets)).then(function (x) {
