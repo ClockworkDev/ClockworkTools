@@ -1,14 +1,14 @@
 #!/usr/bin/env node
 (function () {
-    var fs = require('fs');
+    var fs = require('fs-extra');
     var path = require('path');
-    var os = require('os');
     var spawn = require('child_process').spawn;
     var parseString = require('xml2js').parseString;
     var ncp = require('ncp').ncp;
     var archiver = require('archiver');
     var request = require('request');
     var prompt = require('prompt');
+    var geardoc = require('@clockwork/geardoc');
 
     prompt.start();
     prompt.message = "Some information is required";
@@ -70,28 +70,35 @@
                 });
                 break;
             case "publish":
-                prompt.get({
-                    properties: {
-                        sourceFile: {
-                            description: 'Enter the location of the source file',
-                            required: true
-                        },
-                        packageId: {
-                            description: 'Enter the package name',
-                            pattern: /^[a-zA-Z0-9]+$/,
-                            message: 'Name must onyl contain alphanumeric characters',
-                            required: true
-                        },
-                        packageVersion: {
-                            description: 'Enter the package version',
-                            pattern: /^[a-zA-Z0-9\.\-]+$/,
-                            message: 'Name must only contain alphanumeric characters, dots and dashes',
-                            required: true
-                        }
+                fs.access('clockwork-packages.repo', fs.constants.F_OK, (err) => {
+                    if (err) {
+                        console.log("Please execute this command in the Clockwork Packages root folder (where the clockwork-packages.repo is)");
+                    } else {
+                        prompt.get({
+                            properties: {
+                                sourceFile: {
+                                    description: 'Enter the location of the source file',
+                                    required: true
+                                },
+                                packageId: {
+                                    description: 'Enter the package name',
+                                    pattern: /^[a-zA-Z0-9]+$/,
+                                    message: 'Name must only contain alphanumeric characters',
+                                    required: true
+                                },
+                                packageVersion: {
+                                    description: 'Enter the package version',
+                                    pattern: /^[a-zA-Z0-9\.\-]+$/,
+                                    message: 'Name must only contain alphanumeric characters, dots and dashes',
+                                    required: true
+                                }
+                            }
+                        }, function (err, result) {
+                            tryPublish(result.sourceFile, result.packageId, result.packageVersion);
+                        });
                     }
-                }, function (err, result) {
-                    tryPublish(getDataViaPrompt, result.sourceFile, result.packageId, result.packageVersion);
                 });
+                
                 break;
             case "bridge":
                 runBridge(userArguments[1]);
@@ -517,64 +524,22 @@
         })
     }
 
-    function tryPublish(getData, sourceFile, packageId, packageVersion) {
-        request('http://cwpm.azurewebsites.net/api/packages/' + packageId, function (error, response, body) {
-            if (!error && response.statusCode == 200) {
-                var packages = JSON.parse(body);
-                var existing = packages.filter(function (p) {
-                    return p.version == packageVersion;
-                });
-                if (existing.length == 0) {
-                    publish(getData, sourceFile, packageId, packageVersion);
-                } else {
-                    getData({
-                        properties: {
-                            confirm: {
-                                description: 'This package/version is already published, do you want to overwrite it? (Y/N)',
-                                pattern: /Y|N/,
-                                required: true
-                            },
-                        }
-                    }, function (err, result) {
-                        if (result.confirm == "Y") {
-                            publish(getData, sourceFile, packageId, packageVersion);
-                        }
-                    });
-                }
-            }
-        });
-    }
-
-    function publish(getData, sourceFile, packageId, packageVersion) {
-        fs.readFile(sourceFile, function (err, data) {
-            getData({
-                properties: {
-                    username: {
-                        description: 'Enter your username',
-                        required: true
-                    },
-                    password: {
-                        description: 'Enter your password',
-                        hidden: true,
-                        required: true,
-                        replace: '*'
-                    }
-                }
-            }, function (err, result) {
-                request.post('http://cwpm.azurewebsites.net/api/packages/' + packageId + "/" + packageVersion, {
-                    form: {
-                        username: result.username,
-                        password: result.password,
-                        source: data,
-                    }
-                }, function (error, response, body) {
-                    if (!error && response.statusCode == 200) {
-                        console.log("Package published!");
+    function tryPublish(sourceFile, packageId, packageVersion) {
+        fs.copy(sourceFile, `./packages/${packageId}/${packageVersion}/components.js`, (err) => {
+            if (err) {
+                console.log(err);
+            } else {
+                console.log('Package saved');
+                fs.readFile(sourceFile, 'utf8', (err, data) => {
+                    if (err) {
+                        console.log(err);
                     } else {
-                        console.log(body);
+                        fs.outputFile(`./doc/${packageId}/${packageVersion}/doc.html`, geardoc.generateDoc(data), (err) => {
+                            console.log(err || 'Documentation saved');
+                        })
                     }
                 });
-            });
+            }
         });
     }
 

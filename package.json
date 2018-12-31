@@ -28,9 +28,11 @@
   },
   "homepage": "https://github.com/arcadiogarcia/ClockworkTools#readme",
   "dependencies": {
+    "@clockwork/geardoc": "^0.1.2",
     "archiver": "^1.3.0",
     "clockwork-uwp-bridge": "^0.1.4",
     "clockwork-web-bridge": "^0.2.16",
+    "fs-extra": "^7.0.1",
     "ncp": "^2.0.0",
     "prompt": "^1.0.0",
     "request": "^2.81.0",
