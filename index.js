@@ -9,6 +9,7 @@
     var request = require('request');
     var prompt = require('prompt');
     var geardoc = require('@clockwork/geardoc');
+    var exec = require('child_process').exec;
 
     prompt.start();
     prompt.message = "Some information is required";
@@ -70,35 +71,29 @@
                 });
                 break;
             case "publish":
-                fs.access('clockwork-packages.repo', fs.constants.F_OK, (err) => {
-                    if (err) {
-                        console.log("Please execute this command in the Clockwork Packages root folder (where the clockwork-packages.repo is)");
-                    } else {
-                        prompt.get({
-                            properties: {
-                                sourceFile: {
-                                    description: 'Enter the location of the source file',
-                                    required: true
-                                },
-                                packageId: {
-                                    description: 'Enter the package name',
-                                    pattern: /^[a-zA-Z0-9]+$/,
-                                    message: 'Name must only contain alphanumeric characters',
-                                    required: true
-                                },
-                                packageVersion: {
-                                    description: 'Enter the package version',
-                                    pattern: /^[a-zA-Z0-9\.\-]+$/,
-                                    message: 'Name must only contain alphanumeric characters, dots and dashes',
-                                    required: true
-                                }
-                            }
-                        }, function (err, result) {
-                            tryPublish(result.sourceFile, result.packageId, result.packageVersion);
-                        });
+
+                prompt.get({
+                    properties: {
+                        sourceFile: {
+                            description: 'Enter the location of the source file',
+                            required: true
+                        },
+                        packageId: {
+                            description: 'Enter the package name',
+                            pattern: /^[a-zA-Z0-9]+$/,
+                            message: 'Name must only contain alphanumeric characters',
+                            required: true
+                        },
+                        packageVersion: {
+                            description: 'Enter the package version',
+                            pattern: /^[a-zA-Z0-9\.\-]+$/,
+                            message: 'Name must only contain alphanumeric characters, dots and dashes',
+                            required: true
+                        }
                     }
+                }, function (err, result) {
+                    tryPublish(result.sourceFile, result.packageId, result.packageVersion);
                 });
-                
                 break;
             case "bridge":
                 runBridge(userArguments[1]);
@@ -525,18 +520,58 @@
     }
 
     function tryPublish(sourceFile, packageId, packageVersion) {
-        fs.copy(sourceFile, `./packages/${packageId}/${packageVersion}/components.js`, (err) => {
+        fs.access('clockwork-packages.repo', fs.constants.F_OK, (err) => {
             if (err) {
-                console.log(err);
+                console.log("Please execute this command in the Clockwork Packages root folder (where the clockwork-packages.repo is)");
             } else {
-                console.log('Package saved');
-                fs.readFile(sourceFile, 'utf8', (err, data) => {
+                fs.copy(sourceFile, `./packages/${packageId}/${packageVersion}/components.js`, (err) => {
                     if (err) {
                         console.log(err);
                     } else {
-                        fs.outputFile(`./doc/${packageId}/${packageVersion}/doc.html`, geardoc.generateDoc(data), (err) => {
-                            console.log(err || 'Documentation saved');
-                        })
+                        console.log('Package saved');
+                        fs.readFile(sourceFile, 'utf8', (err, data) => {
+                            if (err) {
+                                console.log(err);
+                            } else {
+                                fs.outputFile(`./doc/${packageId}/${packageVersion}/doc.html`, geardoc.generateDoc(data), (err) => {
+                                    console.log(err || 'Documentation saved');
+                                });
+                                const versionsFile = `packages/${packageId}/versions.json`;
+                                fs.access(versionsFile, fs.constants.F_OK, (err) => {
+                                    var versions = err ? [] : JSON.parse(fs.readFileSync(versionsFile, { encoding: 'utf8' }));
+                                    versions = versions.filter(x=>x.version != packageVersion);
+                                    versions.push({ version: packageVersion, date: new Date() });
+                                    if (err) {
+                                        fs.appendFile(versionsFile, JSON.stringify(versions, null, 4), (e) => {
+                                            console.log(e || 'Version list updated');
+                                        });
+                                    } else {
+                                        fs.writeFile(versionsFile, JSON.stringify(versions, null, 4), (e) => {
+                                            console.log(e || 'Version list updated');
+                                        });
+                                    }
+                                });
+                                const packagesFile = `packages/packages.json`;
+                                fs.access(packagesFile, fs.constants.F_OK, (err) => {
+                                    var packages = err ? [] : JSON.parse(fs.readFileSync(packagesFile, { encoding: 'utf8' }));
+                                    if (packages.filter(x => x.id == packageId).length == 0) {
+                                        exec('git config --global user.name', (err, stdout, stderr) => {
+                                            var name = stdout.replace('\n', '');
+                                            packages.push({ id: packageId, by: name });
+                                            if (err) {
+                                                fs.appendFile(packagesFile, JSON.stringify(packages, null, 4), (e) => {
+                                                    console.log(e || 'Package list updated');
+                                                });
+                                            } else {
+                                                fs.writeFile(packagesFile, JSON.stringify(packages, null, 4), (e) => {
+                                                    console.log(e || 'Package list updated');
+                                                });
+                                            }
+                                        });
+                                    }
+                                });
+                            }
+                        });
                     }
                 });
             }
@@ -691,8 +726,8 @@
         console.log("   Updates the dependency to the specified package to the latest published version");
         console.log("\n > clockwork update");
         console.log("   Updates the dependencies to all the packages to the latest published versions");
-        console.log("\n > clockwork register");
-        console.log("   Registers a developer account, allowing you to publish Clockwork modules");
+        // console.log("\n > clockwork register");
+        // console.log("   Registers a developer account, allowing you to publish Clockwork modules");
         console.log("\n > clockwork publish");
         console.log("   Publishes a module in the Clockwork online repository");
         console.log("\n > clockwork bridge <bridgeName>");
