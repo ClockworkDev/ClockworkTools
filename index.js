@@ -487,7 +487,7 @@
 
     function listPackages(packageId) {
         if (packageId) {
-            request('http://cwpm.azurewebsites.net/api/packages/' + packageId, function (error, response, body) {
+            request('https://clockworkdev.github.io/ClockworkPackages/packages/' + packageId + '/versions.json', function (error, response, body) {
                 if (!error && response.statusCode == 200) {
                     console.log("Versions of " + packageId + ":");
                     var packages = JSON.parse(body);
@@ -497,7 +497,7 @@
                 }
             });
         } else {
-            request('http://cwpm.azurewebsites.net/api/packages', function (error, response, body) {
+            request('https://clockworkdev.github.io/ClockworkPackages/packages/packages.json', function (error, response, body) {
                 if (!error && response.statusCode == 200) {
                     console.log("Packages published:");
                     var packages = JSON.parse(body);
